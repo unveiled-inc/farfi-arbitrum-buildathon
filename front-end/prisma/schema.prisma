@@ -1,0 +1,165 @@
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["driverAdapters", "fullTextSearch"]
+}
+
+datasource db {
+    provider  = "postgresql"
+    url       = env("POSTGRES_PRISMA_URL")
+    directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model CoingeckoTrendingToken {
+    id              Int      @id @default(autoincrement())
+    trending_tokens Json
+    created_at      DateTime @default(now())
+
+    @@index([created_at])
+    @@map("trendingToken")
+}
+
+model TokenBalanceData {
+    id             Int      @id @default(autoincrement())
+    wallet_address String
+    chain_id       Int
+    tokens         Json
+    created_at     DateTime @default(now())
+    updated_at     DateTime @updatedAt
+
+    @@unique([chain_id, wallet_address])
+    @@index([chain_id, wallet_address])
+    @@map("tokenBalanceData")
+}
+
+model ZeroExData {
+    id            Int       @id @default(autoincrement())
+    chain_id      Int
+    token_address String
+    price         Decimal
+    created_at    DateTime  @default(now())
+    updated_at    DateTime  @updatedAt
+    TokenInfo     TokenInfo @relation(fields: [chain_id, token_address], references: [chain_id, token_address])
+
+    @@unique([chain_id, token_address])
+    @@index([chain_id, token_address])
+    @@map("zeroExData")
+}
+
+model GeckoTerminalData {
+    id                Int                @id @default(autoincrement())
+    chain_id          Int
+    token_address     String
+    price_usd         Decimal?
+    market_cap_usd    Decimal?
+    volume_usd_h24    Decimal?
+    price_change_h24  Decimal?
+    created_at        DateTime           @default(now())
+    updated_at        DateTime           @updatedAt
+    TokenInfo         TokenInfo          @relation(fields: [chain_id, token_address], references: [chain_id, token_address])
+    TokenPriceHistory TokenPriceHistory?
+
+    @@unique([chain_id, token_address])
+    @@index([chain_id, token_address])
+    @@map("geckoTerminalData")
+}
+
+model TokenPriceHistory {
+    id                Int               @id @default(autoincrement())
+    chain_id          Int
+    token_address     String
+    ohlcv_24h         Json
+    created_at        DateTime          @default(now())
+    updated_at        DateTime          @updatedAt
+    GeckoTerminalData GeckoTerminalData @relation(fields: [chain_id, token_address], references: [chain_id, token_address])
+
+    @@unique([chain_id, token_address])
+    @@index([chain_id, token_address])
+    @@map("tokenPriceHistory")
+}
+
+model TokenInfo {
+    id                Int                @id @default(autoincrement())
+    token_address     String
+    chain_id          Int
+    coingecko_coin_id String?
+    name              String?
+    symbol            String?
+    logo              String?
+    decimals          Int?
+    blocked           Boolean?           @default(false)
+    whitelisted       Boolean?           @default(false)
+    SwapLog           SwapLog[]
+    GeckoTerminalData GeckoTerminalData?
+    ZeroExData        ZeroExData?
+
+    @@unique([chain_id, token_address])
+    @@index([chain_id, token_address, name, symbol])
+    @@map("tokenInfo")
+}
+
+model UserInfo {
+    id              Int          @id @default(autoincrement())
+    fid             Int          @unique
+    fname           String
+    display_name    String
+    pfp_url         String
+    follower_count  Int
+    following_count Int
+    created_at      DateTime     @default(now())
+    updated_at      DateTime     @updatedAt
+    UserWallet      UserWallet[]
+
+    @@index([fid, fname])
+    @@map("userInfo")
+}
+
+model UserWallet {
+    fid            Int
+    wallet_address String
+    active         Boolean  @default(true)
+    UserInfo       UserInfo @relation(fields: [fid], references: [fid])
+
+    @@id([fid, wallet_address])
+    @@unique([fid, wallet_address])
+    @@index([fid, wallet_address])
+    @@map("userWallet")
+}
+
+model SwapLog {
+    id            Int       @id @default(autoincrement())
+    hash          String
+    token_address String
+    chain_id      Int
+    referrer_fid  Int
+    user_fid      Int
+    created_at    DateTime  @default(now())
+    TokenInfo     TokenInfo @relation(fields: [token_address, chain_id], references: [token_address, chain_id])
+
+    @@unique([chain_id, hash])
+    @@index([chain_id, hash, token_address, referrer_fid, user_fid, created_at(sort: Desc)])
+    @@map("swapLog")
+}
+
+model PendleMarket {
+    id                 Int       @id @default(autoincrement())
+    chain_id           Int
+    market_address     String
+    description        String?
+    whitelisted        Boolean   @default(false)
+    expiry             DateTime?
+    pt                 Json?
+    yt                 Json?
+    sy                 Json?
+    lp                 Json?
+    underlying_asset   Json?
+    accounting_asset   Json?
+    trading_volume_usd Decimal?
+    liquidity_usd      Decimal?
+    implied_apy        Decimal?
+    created_at         DateTime  @default(now())
+    updated_at         DateTime  @updatedAt
+
+    @@unique([chain_id, market_address])
+    @@index([chain_id, market_address])
+    @@map("pendleMarket")
+}
